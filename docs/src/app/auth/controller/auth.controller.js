@@ -1,7 +1,12 @@
 import * as authService from"../service/auth.service.js";
 import { toMs } from "../../../pkg/utils/time/time.js";
 import { validateBody } from "../../../lib/validation/validation.js";
-import { registerDTO, verifyAccountDTO } from "../dto/auth.dto.js";
+import {
+    registerDTO,
+    verifyAccountDTO,
+    loginDTO,
+    verifyLoginOtpDTO
+} from "../dto/auth.dto.js";
 import { createUser } from "../repository/auth.repository.js";
 export async function register(req,res,next){
     try{
@@ -32,16 +37,33 @@ export async function verifyAccount(req,res,next){
 }
 export async function login(req,res,next){
     try{
-        const{email,password}=req.body;
-        const token = await authService.login(email,password);
+        const {email,password} = validateBody(loginDTO,req.body);
+
+        await authService.login(email,password);
+
+        res.json({
+            message: 'OTP sent successfully, check your email',
+            success: true,
+        });
+    }catch(error){
+        next(error);
+    }
+}
+export async function verifyLoginOtp(req,res,next){
+    try{
+        const {email,code} = validateBody(verifyLoginOtpDTO,req.body);
+
+        const token = await authService.verifyLoginOtp(email,code);
+
         res.cookie('access_token',token,{
             httpOnly:true,
             maxAge:toMs(1,'hours'),
         });
-       res.json({
-        message:'User login Successfully',
-        success:true,
-       })
+
+        res.json({
+            message: 'User login successfully',
+            success: true,
+        });
     }catch(error){
         next(error);
     }

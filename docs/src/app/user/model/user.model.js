@@ -30,6 +30,10 @@ const userSchema=new Schema(
         type:Boolean,
         default:false
     },
+    isBanned: {
+    type: Boolean,
+    default: false
+    },
     isVerified:{
         type:Boolean,
         default:false
@@ -38,10 +42,12 @@ const userSchema=new Schema(
     gender:{
         type:String,
         enum:['male','female'],
-        default:'male'
+        default:'female'
 
-}
-      },
+   },profilePicPath:String,
+    coverImagePaths:[String],
+    cvPath:String,
+    },
       {
 
          timestamps:{

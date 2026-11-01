@@ -1,5 +1,5 @@
 import {model, Schema} from "mongoose";
-const messageSchema=new schema(
+const messageSchema=new Schema(
     {
               content: {
             type: String,
@@ -29,5 +29,5 @@ const messageSchema=new schema(
         }
     }
 )
-export const Message = model ('Message','messageSchema');
+export const Message = model ('Message',messageSchema);
 export default Message;

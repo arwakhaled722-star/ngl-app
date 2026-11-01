@@ -22,7 +22,7 @@ import {
 import { generateToken } from '../utils/token.js';
 import { comparePassword, hashPassword } from "../utils/hash.js";
 import{OAuth2Client} from "google-auth-library";
-import { AppError } from '../../../pkg/error/error.js';
+import { AppError } from '../../../lib/error/error.js';
 import { verifyGoogleToken } from '../../../lib/utils/google-auth.js';
 import { email } from 'zod';
 import { name } from 'nodemailer/lib/package-info.js';
@@ -73,48 +73,119 @@ export async function verifyAccount(email, code) {
 );
 
 //delete otp fromDB
-await otpRepository.deleteOtp(email);
+await otpRepository.deleteOTPsByEmail(email);
 
 return updatedUser;
 }
-   export async function login(email,password) 
-   //check user existence
-   {
+ export async function login(email,password) {
     const user = await authRepository.checkUserExistsByEmail(email);
     if (!user) throw userNotExist;
+
     if (user.isVerified === false) throw userNotVerified;
-        //check password
-    const match = await bcrypt.compare(password,user.password)
+
+    const match = await bcrypt.compare(password,user.password);
     if (!match) throw invalidPassword;
-    //generate token
-    return generateToken({id:user._id,name:user.name});
-}
-//1.check user existence
-export async function sendOtp(email){
-    const user= await authRepository.checkUserExistsByEmail(email);
-    if(!user) throw userNotExist;
-    //2.delete all old OTPs
+
+    // delete old OTPs
     await otpRepository.deleteOTPsByEmail(email);
-    //3.generate OTP and save it into db
+
+    // generate new OTP
     const code = generateOTPCode();
-     await otpRepository.createOTP({
-        code:code,
-        email:email,
-        expiresAt:Date.now()+toMs(3,'minutes')
+
+    await otpRepository.createOTP({
+        code: code,
+        email: email,
+        expiresAt: new Date(Date.now() + toMs(3,'minutes'))
     });
 
-    await sendEmail(email,'new otp',`<p>your new otp is${code}</p>`)
+    // send OTP
+    await sendEmail(
+        email,
+        'Login Verification',
+        `<h1>Your login verification code is: ${code}</h1>`
+    );
+
+    return { message: 'OTP sent successfully' };
 }
-export async function resetPassword (email,code,newPassword){
-    //1.verify otp code
-    const otp= await otpRepository.getOtpByEmail(email);
-    if(!otp) throw otpExpired;
-    if (otp.code!==code) throw invalidCode;
-    //2.hashPass
+
+export async function verifyLoginOtp(email, code) {
+    const user = await authRepository.checkUserExistsByEmail(email);
+    if (!user) throw userNotExist;
+
+    const otp = await otpRepository.getOtpByEmail(email);
+    if (!otp) throw otpExpired;
+
+    // check OTP expiration
+    if (otp.expiresAt < new Date()) {
+        await otpRepository.deleteOTPsByEmail(email);
+        throw otpExpired;
+    }
+
+    // check OTP code
+    if (otp.code !== code) throw invalidCode;
+
+    // delete OTP after successful verification
+    await otpRepository.deleteOTPsByEmail(email);
+
+    // generate login token
+    return generateToken({
+        id: user._id,
+        name: user.name
+    });
+}
+export async function sendOtp(email) {
+    // 1. Check user existence
+    const user = await authRepository.checkUserExistsByEmail(email);
+    if (!user) throw userNotExist;
+
+    // 2. Delete old OTPs
+    await otpRepository.deleteOTPsByEmail(email);
+
+    // 3. Generate new OTP
+    const code = generateOTPCode();
+
+    // 4. Save OTP
+    await otpRepository.createOTP({
+        code: code,
+        email: email,
+        expiresAt: new Date(Date.now() + toMs(3, 'minutes'))
+    });
+
+    // 5. Send OTP
+    await sendEmail(
+        email,
+        'Reset Password',
+        `<h1>Your password reset code is: ${code}</h1>`
+    );
+}
+export async function resetPassword(email, code, newPassword) {
+
+    // 1. Check user existence
+    const user = await authRepository.checkUserExistsByEmail(email);
+    if (!user) throw userNotExist;
+
+    // 2. Get OTP
+    const otp = await otpRepository.getOtpByEmail(email);
+    if (!otp) throw otpExpired;
+
+    // 3. Check OTP expiration
+    if (otp.expiresAt < new Date()) {
+        await otpRepository.deleteOTPsByEmail(email);
+        throw otpExpired;
+    }
+
+    // 4. Check OTP code
+    if (otp.code !== code) throw invalidCode;
+
+    // 5. Hash new password
     const hashedPassword = await hashPassword(newPassword);
-    //3.update user pass
-    await userRepository.updateUserByEmail(email,{password:hashedPassword});
-    //4.delete old otp
+
+    // 6. Update password
+    await userRepository.updateUserByEmail(email, {
+        password: hashedPassword
+    });
+
+    // 7. Delete OTP
     await otpRepository.deleteOTPsByEmail(email);
 }
 export async function loginWithGoogle(idToken){
