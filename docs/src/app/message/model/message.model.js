@@ -10,18 +10,24 @@ const messageSchema=new Schema(
         },
         reciever: {
             type: Schema.Types.ObjectId,
-            ref: "User",
+            ref: "user",
             required: true,
         },
         sender: {
             type: Schema.Types.ObjectId,
-            ref: "User",
+            ref: "user",
         },
         isDeleted: {
             type: Boolean,
             default: false
-        }
-    }, 
+        },
+        identityRequestStatus: {
+        type: String,
+        enum: ['none', 'pending', 'accepted', 'rejected'],
+        default: 'none'
+        },
+        },
+        
     {
         timestamps: {
             createdAt:true,

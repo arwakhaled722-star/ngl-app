@@ -81,6 +81,10 @@ return updatedUser;
     const user = await authRepository.checkUserExistsByEmail(email);
     if (!user) throw userNotExist;
 
+    if (user.isBanned) {
+    throw new AppError('Your account has been banned', 403);
+}
+
     if (user.isVerified === false) throw userNotVerified;
 
     const match = await bcrypt.compare(password,user.password);
@@ -111,6 +115,10 @@ return updatedUser;
 export async function verifyLoginOtp(email, code) {
     const user = await authRepository.checkUserExistsByEmail(email);
     if (!user) throw userNotExist;
+
+    if (user.isBanned) {
+    throw new AppError('Your account has been banned', 403);
+}
 
     const otp = await otpRepository.getOtpByEmail(email);
     if (!otp) throw otpExpired;
@@ -192,16 +200,20 @@ export async function loginWithGoogle(idToken){
     //1.verify idToken
      const payload=await verifyGoogleToken(idToken);
     //2.check user existence 
-    const user =await authRepository.checkUserExistsByEmail(payload,email);
+    const user =await authRepository.checkUserExistsByEmail(payload.email);
     //3.if exists >>generate token
-    if(user){
-        return generateToken({
-            id:user._id,
-            email:user.email,
-        });
+    if (user) {
+    if (user.isBanned) {
+        throw new AppError('Your account has been banned', 403);
     }
+
+    return generateToken({
+        id: user._id,
+        email: user.email,
+    });
+}
     //4. if not exists>>createuser>>generate token
-    const createdUser=awaitauthRepository.createUser({
+    const createdUser=await authRepository.createUser({
         name:payload.name,
         email:payload.email,
         provider:'google',

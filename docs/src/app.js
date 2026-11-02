@@ -9,6 +9,7 @@ import { env } from './lib/config/env.js';
 import { globalErrorHandler } from './lib/error/error.handler.js';
 import { correlationId } from './pkg/correlation/correlationId.js';
 import cookieParser from 'cookie-parser';
+import conversationRouter from './app/conversation/conversation.route.js';
 export function createApp(){
    const app= express();
    app.use(cors({origin:'http://localhost:4200'}));
@@ -19,6 +20,7 @@ export function createApp(){
 app.use('/auth', authRouter);
 app.use('/user', userRouter);
 app.use('/message', messageRouter);
+app.use('/conversation', conversationRouter);
 
 // global error handler
 app.use(globalErrorHandler);

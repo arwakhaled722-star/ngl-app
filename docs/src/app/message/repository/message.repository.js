@@ -6,10 +6,32 @@ export async function createMessage(content,receiver,sender){
         reciever: receiver,
     });
 }
-export async function getAllMessages(userId){
+export async function getAllMessages(userId) {
     return Message.find({
-        receiver:userId
-    },
-    {},{populate:{path:"sender"}}
+        reciever: userId,
+        isDeleted: false
+    }).populate({
+        path: 'sender',
+        select: 'name email'
+    });
+}
+export async function findMessageById(messageId) {
+    return Message.findOne({
+        _id: messageId,
+        isDeleted: false
+    });
+}
+export async function updateMessageById(messageId, updatedData) {
+    return Message.findByIdAndUpdate(
+        messageId,
+        updatedData,
+        { returnDocument: 'after' }
     );
+}
+export async function getIdentityRequests(senderId) {
+    return Message.find({
+        sender: senderId,
+        identityRequestStatus: 'pending',
+        isDeleted: false
+    }).populate('reciever', 'name email');
 }
